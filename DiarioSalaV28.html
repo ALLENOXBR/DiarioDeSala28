@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Diário de Classe Pro | V53 Compact Platinum</title>
+    
+    <!-- Bibliotecas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        'egg-yolk': '#FFB800',
+                        'egg-yolk-dark': '#E6A600',
+                        'indigo-green': '#0D5C63',
+                        'indigo-green-dark': '#083E43',
+                        'status-present': '#16a34a', 
+                        'status-absent': '#dc2626', 
+                        'status-justified': '#d97706',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; background-color: #F8FAFC; }
+        body { scroll-behavior: smooth; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scroll { overflow: hidden !important; }
+        .glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        
+        .modal-backdrop { 
+            opacity: 0; visibility: hidden; transition: all 0.3s ease; 
+            z-index: 1000; position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            padding: 1rem; background-color: rgba(13, 92, 99, 0.9); backdrop-filter: blur(8px);
+        }
+        .modal-backdrop.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            transform: scale(0.95) translateY(10px); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            max-height: 92vh; width: 100%; overflow-y: auto; border-radius: 2rem; position: relative; 
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        .modal-backdrop.active .modal-content { transform: scale(1) translateY(0); }
+        
+        /* PDF Template */
+        .pdf-template {
+            width: 794px !important; padding: 40px !important; background: white !important;
+            color: #0D5C63 !important; display: flex !important; flex-direction: column !important; align-items: center !important;
+        }
+        .pdf-template table { width: 100% !important; border-collapse: collapse !important; margin-top: 20px !important; }
+        .pdf-template th, .pdf-template td { border: 1px solid #e2e8f0 !important; padding: 10px !important; text-align: center !important; font-size: 11px !important; }
+        .pdf-template tr { page-break-inside: avoid !important; }
+
+        .toast { opacity: 0; transform: translate(-50%, 20px); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); visibility: hidden; z-index: 6000; position: fixed; bottom: 2rem; left: 50%; }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); visibility: visible; }
+
+        .status-btn { transition: all 0.2s ease; border-width: 2px; }
+        .status-btn.active-P { background-color: #16a34a; color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); }
+        .status-btn.active-F { background-color: #dc2626; color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3); }
+        .status-btn.active-J { background-color: #d97706; color: white; border-color: transparent; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3); }
+        
+        .bg-grad-yolk { background: linear-gradient(135deg, #FFB800 0%, #FF9500 100%); }
+        .bg-grad-indigo { background: linear-gradient(135deg, #0D5C63 0%, #083E43 100%); }
+
+        .close-icon-btn { position: absolute; top: 1.25rem; right: 1.25rem; padding: 0.4rem; border-radius: 0.75rem; color: #94a3b8; transition: all 0.2s; border: none; background: transparent; cursor: pointer; z-index: 20; }
+        .close-icon-btn:hover { background-color: #f1f5f9; color: #dc2626; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+    </style>
+</head>
+<body class="dark:bg-[#021112] text-slate-800 dark:text-slate-100 transition-colors duration-500 no-scroll" id="app-body">
+
+    <!-- Login -->
+    <div id="login-screen" class="fixed inset-0 z-[5000] bg-white dark:bg-[#021112] flex items-center justify-center p-4">
+        <div class="w-full max-w-xs glass bg-white/70 dark:bg-indigo-green/10 shadow-2xl rounded-[2.5rem] p-6 sm:p-8 border border-slate-200 dark:border-indigo-green/30 text-center">
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-12 h-12 bg-grad-yolk rounded-xl flex items-center justify-center mb-4 shadow-xl rotate-3">
+                    <svg class="w-7 h-7 text-indigo-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <h2 class="text-2xl font-black text-indigo-green dark:text-egg-yolk tracking-tighter uppercase">Diário Pro</h2>
+                <p class="text-[9px] font-black text-slate-400 mt-1 tracking-widest uppercase">Senha: 1234</p>
+            </div>
+            <form id="login-form">
+                <input type="password" id="password" autocomplete="current-password" placeholder="SENHA" class="w-full py-3 px-4 border-2 border-slate-100 dark:border-indigo-green/20 rounded-xl bg-slate-50 dark:bg-black/20 focus:outline-none focus:border-egg-yolk transition-all text-center font-black tracking-[0.5em] text-indigo-green dark:text-white text-base mb-4">
+                <button type="submit" class="w-full bg-grad-yolk text-indigo-green font-black py-3 rounded-xl transition shadow-xl active:scale-95 uppercase tracking-widest text-xs">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Interface Principal -->
+    <main class="container mx-auto px-3 sm:px-4 py-4 md:py-8 max-w-4xl hidden opacity-0 transition-opacity duration-1000" id="main-content">
+        
+        <header class="glass bg-white/80 dark:bg-indigo-green/10 shadow-lg border border-slate-200 dark:border-indigo-green/20 rounded-[2rem] p-4 sm:p-6 mb-4 sm:mb-6 text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-slate-100 dark:bg-indigo-green/20">
+                <div id="attendance-progress" class="h-full bg-grad-yolk transition-all duration-700 shadow-[0_0_15px_#FFB800]" style="width: 0%"></div>
+            </div>
+            <div class="flex flex-col items-center gap-4 mt-1">
+                <div class="w-full">
+                    <div class="flex items-center justify-center gap-2 mb-1">
+                         <h1 id="class-title-header" contenteditable="true" onblur="App.renameActiveUnit(this)" class="text-xl sm:text-2xl md:text-3xl font-black text-indigo-green dark:text-egg-yolk truncate focus:ring-0 uppercase tracking-tighter">TURMA PRINCIPAL</h1>
+                         <button id="theme-toggle-btn" onclick="App.toggleTheme()" class="p-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-egg-yolk transition-all shadow-inner"></button>
+                    </div>
+                    <select id="class-selector" onchange="App.selectClass(this.value)" class="text-[8px] sm:text-[9px] font-black bg-indigo-green dark:bg-egg-yolk text-white dark:text-indigo-green rounded-full px-4 py-1.5 focus:outline-none uppercase tracking-widest shadow-lg cursor-pointer"></select>
+                </div>
+                <nav class="flex flex-wrap items-center justify-center gap-2">
+                    <button onclick="App.openDiary()" title="Matriz" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-indigo-green dark:text-white hover:bg-egg-yolk transition-all border border-slate-100 dark:border-white/10 shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+                    <button onclick="App.openCharts()" title="Desempenho" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-indigo-green dark:text-white hover:bg-egg-yolk transition-all border border-slate-100 dark:border-white/10 shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></button>
+                    <button onclick="App.openReports()" title="Relatórios" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-indigo-green dark:text-white hover:bg-egg-yolk transition-all border border-slate-100 dark:border-white/10 shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></button>
+                    <div class="w-px h-6 bg-slate-200 dark:bg-indigo-green/30 mx-1"></div>
+                    <button onclick="App.openModal('backupModal')" title="Backup" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-indigo-green dark:text-white hover:bg-egg-yolk transition-all border border-slate-100 dark:border-white/10 shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+                    <button onclick="App.openModal('classesModal')" title="Turmas" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-indigo-green dark:text-white hover:bg-egg-yolk transition-all border border-slate-100 dark:border-white/10 shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+                    <button onclick="App.logout()" title="Sair" class="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-white/5 text-red-500 hover:bg-red-50 transition-all shadow-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+                </nav>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-100 dark:border-indigo-green/20 flex flex-col items-center gap-2">
+                <input type="date" id="attendanceDate" onchange="App.render()" class="w-full max-w-[180px] py-2 px-4 border-2 border-slate-100 dark:border-indigo-green/20 rounded-xl bg-slate-50 dark:bg-black/20 font-black focus:border-egg-yolk outline-none text-center text-indigo-green dark:text-white shadow-inner text-xs">
+                <div id="currentTime" class="text-[9px] font-black bg-grad-indigo text-egg-yolk py-1.5 px-6 rounded-full shadow-md border border-egg-yolk/10 uppercase tracking-widest"></div>
+            </div>
+        </header>
+
+        <div class="grid lg:grid-cols-2 gap-4 sm:gap-6 mb-6 text-center text-indigo-green">
+            <section class="bg-white dark:bg-indigo-green/5 shadow-md border border-slate-200 dark:border-indigo-green/20 rounded-[1.5rem] p-4 sm:p-6 flex flex-col items-center">
+                <h2 class="text-xs sm:text-sm font-black mb-4 uppercase tracking-widest dark:text-egg-yolk">Matrícula</h2>
+                <div class="w-full space-y-4">
+                    <div class="flex gap-2 w-full">
+                        <input type="text" id="studentName" placeholder="NOME DO ALUNO" class="flex-grow py-3 px-4 border-2 border-slate-100 dark:border-indigo-green/20 rounded-xl bg-slate-50 dark:bg-black/20 outline-none focus:border-egg-yolk font-bold text-center uppercase text-xs shadow-inner dark:text-white">
+                        <button onclick="App.addStudent()" class="bg-grad-yolk text-indigo-green font-black px-4 rounded-xl active:scale-95 shadow-md"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                    </div>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button onclick="App.openModal('classesModal')" class="bg-indigo-green text-egg-yolk font-black py-2 px-4 rounded-xl transition text-[8px] uppercase shadow-lg">Turmas</button>
+                        <button onclick="App.openModal('importModal')" class="bg-indigo-green text-egg-yolk font-black py-2 px-4 rounded-xl transition text-[8px] uppercase shadow-lg">Importar</button>
+                        <button onclick="App.confirmAction('ZERAR LISTA', 'Deseja apagar todos os alunos e histórico desta turma?', () => App.clearStudents())" class="bg-red-500/10 text-red-500 font-black py-2 px-4 rounded-xl text-[8px] uppercase border border-red-500/20">Zerar</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="bg-white dark:bg-indigo-green/10 shadow-md border border-slate-200 dark:border-indigo-green/20 rounded-[1.5rem] p-4 sm:p-6 flex flex-col items-center text-center">
+                <h2 class="text-xs sm:text-sm font-black mb-4 uppercase tracking-widest dark:text-egg-yolk">Chamada Rápida</h2>
+                <div class="grid grid-cols-2 gap-2 w-full">
+                    <button onclick="App.massStatus('P')" class="bg-grad-yolk text-indigo-green font-black py-3 rounded-xl active:scale-95 shadow-md text-[9px] uppercase tracking-widest">Todos (P)</button>
+                    <button onclick="App.massStatus('F')" class="bg-red-600 text-white font-black py-3 rounded-xl active:scale-95 shadow-md text-[9px] uppercase tracking-widest">Faltas (F)</button>
+                    <button onclick="App.massStatus('')" class="bg-grad-indigo text-egg-yolk font-black py-3 rounded-xl shadow-md text-[9px] uppercase tracking-widest">Limpar</button>
+                    <button onclick="App.exportPDF()" class="bg-grad-yolk text-indigo-green font-black py-3 rounded-xl active:scale-95 shadow-md text-[9px] uppercase tracking-widest">Gerar PDF</button>
+                </div>
+            </section>
+        </div>
+
+        <section id="attendance-section" class="bg-white dark:bg-indigo-green/10 shadow-xl border border-slate-200 dark:border-indigo-green/20 rounded-[2rem] overflow-hidden mb-8">
+            <div class="p-4 sm:p-6 border-b border-slate-100 dark:border-indigo-green/20 text-center">
+                <div class="flex flex-col items-center gap-4 text-indigo-green">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-black uppercase tracking-tighter dark:text-egg-yolk">Lista de Chamada</h2>
+                        <p id="list-date-display" class="text-[9px] text-slate-400 font-black mt-1 uppercase tracking-widest"></p>
+                    </div>
+                    <div class="flex flex-col md:flex-row items-center gap-3 no-export">
+                        <div class="flex items-center gap-1.5 py-1 overflow-x-auto max-w-full custom-scrollbar">
+                            <button onclick="App.setFilter('all')" id="filter-all" class="filter-btn active bg-indigo-green text-egg-yolk px-3 py-1.5 rounded-full text-[8px] font-black uppercase shadow-md whitespace-nowrap">Todos</button>
+                            <button onclick="App.setFilter('P')" id="filter-P" class="filter-btn bg-slate-100 dark:bg-white/5 text-slate-400 px-3 py-1.5 rounded-full text-[8px] font-black uppercase">Presentes</button>
+                            <button onclick="App.setFilter('F')" id="filter-F" class="filter-btn bg-slate-100 dark:bg-white/5 text-slate-400 px-3 py-1.5 rounded-full text-[8px] font-black uppercase">Ausentes</button>
+                        </div>
+                        <input type="text" id="searchStudent" oninput="App.render()" placeholder="BUSCAR..." class="py-1.5 px-4 border-2 border-slate-100 dark:border-white/10 rounded-full bg-slate-50 dark:bg-black/20 text-[9px] font-black uppercase outline-none focus:border-egg-yolk w-32">
+                    </div>
+                </div>
+                <div id="attendance-summary" class="mt-4 flex flex-wrap justify-center gap-2"></div>
+            </div>
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-center border-collapse">
+                    <thead class="bg-slate-50 dark:bg-black/20 border-b dark:border-indigo-green/30 text-indigo-green dark:text-white">
+                        <tr>
+                            <th class="px-3 py-4 text-[11px] font-black w-14 border-r dark:border-white/10">№</th>
+                            <th class="px-3 py-4 text-[9px] font-black uppercase tracking-widest text-left">Aluno</th>
+                            <th class="px-3 py-4 text-[9px] font-black uppercase tracking-widest">Status</th>
+                            <th class="px-3 py-4 text-[9px] font-black uppercase no-export">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentList" class="divide-y divide-slate-100 dark:divide-indigo-green/10"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modais -->
+    <div id="confirmModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-8 w-full max-w-xs text-center border-2 border-egg-yolk shadow-3xl text-indigo-green dark:text-white">
+            <h3 id="confirmTitle" class="text-xl font-black uppercase mb-4 dark:text-egg-yolk">Confirmar</h3>
+            <p id="confirmMessage" class="text-[10px] font-bold text-slate-400 uppercase mb-8 leading-relaxed"></p>
+            <div class="flex flex-col gap-3">
+                <button id="confirmYesBtn" class="bg-grad-yolk text-indigo-green font-black py-4 rounded-2xl shadow-xl uppercase text-[10px] active:scale-95 transition-all">Confirmar Agora</button>
+                <button onclick="App.closeModal()" class="bg-slate-100 dark:bg-white/5 text-slate-400 font-bold py-3 rounded-2xl uppercase text-[9px]">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="diaryModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-6 w-full max-w-[95vw] h-[85vh] flex flex-col shadow-3xl text-indigo-green dark:text-white">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <div class="flex items-center justify-between mb-6 px-2">
+                <h3 class="text-xl font-black uppercase dark:text-egg-yolk">Matriz Escolar</h3>
+                <div class="flex items-center gap-3 bg-indigo-green p-1.5 rounded-full shadow-xl">
+                    <button onclick="App.changeDiaryMonth(-1)" class="p-1 px-2.5 bg-white/10 rounded-full text-white font-black text-[10px]">&lt;</button>
+                    <span id="diary-month-year" class="text-white font-black uppercase text-[9px] min-w-[100px] text-center"></span>
+                    <button onclick="App.changeDiaryMonth(1)" class="p-1 px-2.5 bg-white/10 rounded-full text-white font-black text-[10px]">&gt;</button>
+                </div>
+            </div>
+            <div id="diary-grid-container" class="flex-grow overflow-auto border rounded-2xl bg-slate-50 dark:bg-black/20 custom-scrollbar"></div>
+        </div>
+    </div>
+
+    <div id="chartsModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-8 w-full max-w-sm text-center shadow-3xl">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <h3 class="text-xl font-black uppercase mb-6 dark:text-egg-yolk">Desempenho Geral</h3>
+            <div class="relative h-48 flex justify-center items-center"><canvas id="attendance-chart"></canvas></div>
+            <div id="chart-legend" class="grid grid-cols-3 gap-2 mt-6"></div>
+        </div>
+    </div>
+
+    <div id="reportsModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-6 w-full max-w-2xl shadow-3xl text-indigo-green dark:text-white">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <h3 class="text-xl font-black uppercase text-center mb-6 dark:text-egg-yolk">Relatório de Assiduidade</h3>
+            <div id="reports-grid-container" class="overflow-auto max-h-[50vh] custom-scrollbar border rounded-2xl bg-slate-50 dark:bg-black/20"></div>
+        </div>
+    </div>
+
+    <div id="importModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-6 w-full max-w-xl shadow-3xl">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <h3 class="text-xl font-black uppercase text-center mb-4 dark:text-egg-yolk">Importação</h3>
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <textarea id="import-area" class="w-full h-32 p-4 bg-slate-50 dark:bg-black/40 border rounded-xl outline-none focus:border-egg-yolk font-bold text-[10px] uppercase" placeholder="NOMES..."></textarea>
+                <div class="bg-indigo-green/5 dark:bg-white/5 p-4 rounded-xl text-[9px] font-bold text-slate-500 uppercase leading-relaxed">
+                    <p class="text-indigo-green dark:text-egg-yolk font-black mb-2">Formato:</p>
+                    <p>• Um por linha</p>
+                    <p>• Nome;Número</p>
+                    <label class="mt-4 block bg-indigo-green text-white py-2 rounded-lg text-center cursor-pointer shadow-md text-[8px] hover:bg-indigo-green-dark transition-all">
+                        Carregar CSV
+                        <input type="file" id="csv-file" onchange="App.handleCsv(this)" class="hidden" accept=".csv,.txt">
+                    </label>
+                </div>
+            </div>
+            <button onclick="App.executeImport()" class="w-full bg-grad-yolk text-indigo-green font-black py-3 rounded-xl shadow-md uppercase text-[10px] active:scale-95">Importar</button>
+        </div>
+    </div>
+
+    <div id="backupModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-8 w-full max-w-xs text-center shadow-3xl">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <h3 class="text-xl font-black uppercase mb-4 dark:text-egg-yolk">Segurança</h3>
+            <div class="flex flex-col gap-2">
+                <button onclick="App.exportBackup()" class="bg-indigo-green text-white font-bold py-3 rounded-xl uppercase text-[9px] shadow-md hover:bg-indigo-green-dark transition-all">Baixar JSON</button>
+                <label class="bg-slate-100 dark:bg-white/5 text-slate-500 font-bold py-3 rounded-xl uppercase text-[9px] cursor-pointer text-center hover:bg-slate-200 dark:hover:bg-white/10 transition-all">
+                    Restaurar
+                    <input type="file" onchange="App.importBackup(this)" class="hidden" accept=".json">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div id="classesModal" class="modal-backdrop">
+        <div class="modal-content bg-white dark:bg-[#021112] p-6 w-full max-w-sm shadow-3xl flex flex-col max-h-[70vh]">
+            <button onclick="App.closeModal()" class="close-icon-btn"><svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            <h3 class="text-lg font-black uppercase text-center mb-4 dark:text-egg-yolk">Turmas</h3>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="new-class-name" placeholder="NOME" class="flex-grow py-2 px-3 bg-slate-50 dark:bg-black/20 border rounded-lg outline-none focus:border-egg-yolk font-bold text-[10px] uppercase">
+                <button onclick="App.addClass()" class="bg-indigo-green text-white px-4 rounded-lg font-black">+</button>
+            </div>
+            <div id="class-list-container" class="space-y-2 overflow-y-auto pr-1 custom-scrollbar"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast glass bg-indigo-green text-egg-yolk py-3 px-8 rounded-full shadow-2xl font-black text-[9px] uppercase text-center border-2 border-egg-yolk/30 min-w-[220px]"></div>
+
+<script>
+const App = {
+    data: {
+        password: btoa('1234'),
+        classes: [],
+        activeClassId: null,
+        theme: 'light'
+    },
+    currentFilter: 'all',
+    diaryState: { month: new Date().getMonth(), year: new Date().getFullYear() },
+    chartInstance: null,
+    pendingAction: null,
+
+    init() {
+        const stored = localStorage.getItem('diario_v53_platinum');
+        if (stored) {
+            try {
+                this.data = JSON.parse(stored);
+                if (!Array.isArray(this.data.classes)) this.data.classes = [];
+            } catch (e) { console.error("Erro no load", e); }
+        }
+
+        if (this.data.classes.length === 0) {
+            const id = 'c_' + Date.now();
+            this.data.classes = [{ id, name: "TURMA PRINCIPAL", students: [], history: {} }];
+            this.data.activeClassId = id;
+            this.save();
+        }
+
+        document.getElementById('attendanceDate').valueAsDate = new Date();
+        this.setupClock();
+        this.applyTheme();
+        
+        if (sessionStorage.getItem('pro_auth_ok') === 'true') {
+            this.showMain();
+        }
+
+        document.getElementById('login-form').onsubmit = (e) => {
+            e.preventDefault();
+            if (document.getElementById('password').value === atob(this.data.password)) {
+                sessionStorage.setItem('pro_auth_ok', 'true');
+                this.showMain();
+            } else this.showToast("SENHA INCORRETA", "error");
+        };
+
+        document.getElementById('confirmYesBtn').onclick = () => {
+            if (this.pendingAction) {
+                this.pendingAction();
+                this.pendingAction = null;
+            }
+            this.closeModal();
+        };
+    },
+
+    save() { localStorage.setItem('diario_v53_platinum', JSON.stringify(this.data)); },
+
+    setupClock() {
+        setInterval(() => {
+            const d = new Date();
+            const el = document.getElementById('currentTime');
+            if(el) el.textContent = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short' }).toUpperCase();
+        }, 1000);
+    },
+
+    showMain() {
+        document.getElementById('login-screen').classList.add('hidden');
+        const main = document.getElementById('main-content');
+        main.classList.remove('hidden');
+        document.getElementById('app-body').classList.remove('no-scroll');
+        setTimeout(() => main.classList.add('opacity-100'), 50);
+        this.render();
+    },
+
+    getActiveClass() { return this.data.classes.find(c => c.id === this.data.activeClassId); },
+
+    render() {
+        const cls = this.getActiveClass();
+        if (!cls) return;
+
+        document.getElementById('class-title-header').textContent = cls.name;
+        document.getElementById('class-selector').innerHTML = this.data.classes.map(c => `<option value="${c.id}" ${c.id === this.data.activeClassId ? 'selected' : ''}>${c.name}</option>`).join('');
+        
+        const date = document.getElementById('attendanceDate').value;
+        const dObj = new Date(date + 'T00:00:00');
+        document.getElementById('list-date-display').textContent = dObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+
+        this.renderStudents();
+    },
+
+    renderStudents() {
+        const cls = this.getActiveClass();
+        const date = document.getElementById('attendanceDate').value;
+        const body = document.getElementById('studentList');
+        const searchInput = document.getElementById('searchStudent');
+        const search = searchInput ? searchInput.value.toLowerCase() : "";
+        const records = cls.history[date] || {};
+
+        let students = [...cls.students].sort((a,b) => a.number - b.number);
+        
+        if (this.currentFilter !== 'all') {
+            students = students.filter(s => records[s.id] === this.currentFilter);
+        }
+        if (search) {
+            students = students.filter(s => s.name.toLowerCase().includes(search));
+        }
+
+        body.innerHTML = students.map((s) => {
+            const status = records[s.id] || '';
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                    <td class="px-3 py-4 font-black text-slate-400 w-14 border-r dark:border-white/10 text-[11px]">${s.number}</td>
+                    <td class="px-3 py-4 text-left">
+                        <span contenteditable="true" onblur="App.renameStudent('${s.id}', this)" class="font-bold uppercase text-[10px] outline-none focus:bg-egg-yolk/10 p-1 rounded">${s.name}</span>
+                    </td>
+                    <td class="px-3 py-4">
+                        <div class="flex items-center justify-center gap-1.5">
+                            ${['P', 'F', 'J'].map(st => `
+                                <button onclick="App.markStatus('${s.id}', '${st}')" class="status-btn w-7 h-7 rounded-lg font-black text-[9px] ${status === st ? 'active-' + st : 'text-slate-300 dark:text-slate-600'}">${st}</button>
+                            `).join('')}
+                        </div>
+                    </td>
+                    <td class="px-3 py-4 no-export">
+                        <button onclick="App.confirmAction('REMOVER ALUNO', 'Remover ${s.name} da lista permanentemente?', () => App.removeStudent('${s.id}'))" class="text-slate-200 hover:text-red-500 p-1.5 transition-all"><svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        this.updateStats();
+    },
+
+    updateStats() {
+        const cls = this.getActiveClass();
+        const date = document.getElementById('attendanceDate').value;
+        const records = Object.values(cls.history[date] || {});
+        const total = cls.students.length;
+        const p = records.filter(v => v === 'P').length;
+        const f = records.filter(v => v === 'F').length;
+        const j = records.filter(v => v === 'J').length;
+        
+        document.getElementById('attendance-progress').style.width = total ? `${(records.length / total) * 100}%` : '0%';
+        document.getElementById('attendance-summary').innerHTML = `
+            <div class="px-3 py-1.5 rounded-full border bg-white dark:bg-black/20 text-[8px] font-black uppercase text-green-600 shadow-sm">P: ${p}</div>
+            <div class="px-3 py-1.5 rounded-full border bg-white dark:bg-black/20 text-[8px] font-black uppercase text-red-600 shadow-sm">F: ${f}</div>
+            <div class="px-3 py-1.5 rounded-full border bg-white dark:bg-black/20 text-[8px] font-black uppercase text-amber-600 shadow-sm">J: ${j}</div>
+        `;
+    },
+
+    confirmAction(title, msg, action) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMessage').textContent = msg;
+        this.pendingAction = action;
+        this.openModal('confirmModal');
+    },
+
+    addStudent() {
+        const input = document.getElementById('studentName');
+        const name = input.value.trim().toUpperCase();
+        if (name) {
+            const cls = this.getActiveClass();
+            const num = cls.students.length > 0 ? Math.max(...cls.students.map(s => s.number)) + 1 : 1;
+            cls.students.push({ id: 's_' + Date.now(), name, number: num });
+            input.value = '';
+            this.save(); this.render();
+            this.showToast("ALUNO ADICIONADO");
+        }
+    },
+
+    renameStudent(sid, el) {
+        const cls = this.getActiveClass();
+        const s = cls.students.find(x => x.id === sid);
+        if (s && el.textContent.trim()) {
+            s.name = el.textContent.trim().toUpperCase();
+            this.save();
+        }
+    },
+
+    removeStudent(id) {
+        const cls = this.getActiveClass();
+        cls.students = cls.students.filter(s => s.id !== id);
+        this.save(); this.render();
+        this.showToast("ALUNO REMOVIDO");
+    },
+
+    clearStudents() {
+        const cls = this.getActiveClass();
+        cls.students = [];
+        cls.history = {};
+        this.save(); this.render();
+        this.showToast("LISTA ZERADA");
+    },
+
+    markStatus(sid, st) {
+        const cls = this.getActiveClass();
+        const date = document.getElementById('attendanceDate').value;
+        if (!cls.history[date]) cls.history[date] = {};
+        cls.history[date][sid] = (cls.history[date][sid] === st) ? '' : st;
+        this.save(); this.render();
+    },
+
+    massStatus(st) {
+        const cls = this.getActiveClass();
+        const date = document.getElementById('attendanceDate').value;
+        if (!cls.history[date]) cls.history[date] = {};
+        cls.students.forEach(s => cls.history[date][s.id] = st);
+        this.save(); this.render();
+    },
+
+    setFilter(f) {
+        this.currentFilter = f;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active', 'bg-indigo-green', 'text-egg-yolk', 'shadow-md'));
+        const activeBtn = document.getElementById('filter-' + f);
+        if(activeBtn) activeBtn.classList.add('active', 'bg-indigo-green', 'text-egg-yolk', 'shadow-md');
+        this.render();
+    },
+
+    addClass() {
+        const name = document.getElementById('new-class-name').value.trim().toUpperCase();
+        if (name) {
+            const id = 'c_' + Date.now();
+            this.data.classes.push({ id, name, students: [], history: {} });
+            this.data.activeClassId = id;
+            document.getElementById('new-class-name').value = '';
+            this.save(); this.render(); this.renderClassList();
+        }
+    },
+
+    selectClass(id) {
+        this.data.activeClassId = id;
+        this.save(); this.render();
+    },
+
+    renameActiveUnit(el) {
+        const cls = this.getActiveClass();
+        if (cls && el.textContent.trim()) {
+            cls.name = el.textContent.trim().toUpperCase();
+            this.save(); this.render();
+        }
+    },
+
+    renderClassList() {
+        const container = document.getElementById('class-list-container');
+        if(!container) return;
+        container.innerHTML = this.data.classes.map(c => `
+            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-white/5 rounded-xl border ${c.id === this.data.activeClassId ? 'border-egg-yolk shadow-md' : 'border-transparent'}">
+                <span class="font-black text-[9px] uppercase truncate flex-grow cursor-pointer" onclick="App.selectClass('${c.id}'); App.closeModal();">${c.name}</span>
+                <button onclick="App.confirmAction('APAGAR TURMA', 'Excluir permanentemente ${c.name} e todo seu histórico?', () => App.deleteClass('${c.id}'))" class="text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+            </div>
+        `).join('');
+    },
+
+    deleteClass(id) {
+        if (this.data.classes.length === 1) return this.showToast("MÍNIMO UMA TURMA", "error");
+        this.data.classes = this.data.classes.filter(c => c.id !== id);
+        if (this.data.activeClassId === id) this.data.activeClassId = this.data.classes[0].id;
+        this.save(); this.render(); this.renderClassList();
+        this.showToast("TURMA REMOVIDA");
+    },
+
+    executeImport() {
+        const text = document.getElementById('import-area').value;
+        if (!text) return;
+        const lines = text.split('\n').filter(l => l.trim());
+        const cls = this.getActiveClass();
+        let added = 0;
+
+        lines.forEach(line => {
+            let parts = line.split(';');
+            if (parts.length < 2) parts = line.split(',');
+            const name = parts[0].trim().toUpperCase();
+            let num = parseInt(parts[1]) || (cls.students.length + 1);
+
+            if (name && !cls.students.find(s => s.name === name)) {
+                cls.students.push({ id: 's_' + Date.now() + Math.random(), name, number: num });
+                added++;
+            }
+        });
+
+        this.save(); this.render(); this.closeModal();
+        this.showToast(`${added} IMPORTADOS`);
+        document.getElementById('import-area').value = '';
+    },
+
+    handleCsv(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => document.getElementById('import-area').value = e.target.result;
+            reader.readAsText(file);
+        }
+    },
+
+    openDiary() { this.renderDiary(); this.openModal('diaryModal'); },
+
+    renderDiary() {
+        const cls = this.getActiveClass();
+        const container = document.getElementById('diary-grid-container');
+        const days = new Date(this.diaryState.year, this.diaryState.month + 1, 0).getDate();
+        const monthLabel = new Date(this.diaryState.year, this.diaryState.month).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        
+        document.getElementById('diary-month-year').textContent = monthLabel.toUpperCase();
+
+        let h = `<table class="w-full text-[8px] border-collapse"><thead class="bg-slate-100 dark:bg-black sticky top-0 z-30"><tr><th class="p-2 text-left border uppercase sticky left-0 bg-slate-100 dark:bg-black z-40 w-24">Estudante</th>`;
+        for (let d = 1; d <= days; d++) h += `<th class="p-1 border">${d}</th>`;
+        h += `</tr></thead><tbody>`;
+
+        cls.students.sort((a,b) => a.number - b.number).forEach(s => {
+            h += `<tr><td class="p-2 border font-bold uppercase truncate sticky left-0 bg-white dark:bg-[#021112] z-10 shadow-sm">${s.name}</td>`;
+            for (let d = 1; d <= days; d++) {
+                const ds = `${this.diaryState.year}-${String(this.diaryState.month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const st = cls.history[ds]?.[s.id] || '';
+                let bg = '';
+                if(st === 'P') bg = 'bg-status-present text-white shadow-inner';
+                if(st === 'F') bg = 'bg-status-absent text-white shadow-inner';
+                if(st === 'J') bg = 'bg-status-justified text-white shadow-inner';
+                h += `<td class="p-1 border text-center font-black ${bg}">${st || '-'}</td>`;
+            }
+            h += `</tr>`;
+        });
+        container.innerHTML = h + `</tbody></table>`;
+    },
+
+    changeDiaryMonth(delta) {
+        this.diaryState.month += delta;
+        if (this.diaryState.month > 11) { this.diaryState.month = 0; this.diaryState.year++; }
+        if (this.diaryState.month < 0) { this.diaryState.month = 11; this.diaryState.year--; }
+        this.renderDiary();
+    },
+
+    openCharts() {
+        const cls = this.getActiveClass();
+        const stats = { P: 0, F: 0, J: 0 };
+        Object.values(cls.history).forEach(day => {
+            Object.values(day).forEach(v => { if (stats[v] !== undefined) stats[v]++; });
+        });
+
+        const ctx = document.getElementById('attendance-chart').getContext('2d');
+        if (this.chartInstance) this.chartInstance.destroy();
+        
+        this.chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['P', 'F', 'J'],
+                datasets: [{
+                    data: [stats.P, stats.F, stats.J],
+                    backgroundColor: ['#16a34a', '#dc2626', '#d97706'],
+                    borderWidth: 0
+                }]
+            },
+            options: { cutout: '75%', plugins: { legend: { display: false } } }
+        });
+
+        document.getElementById('chart-legend').innerHTML = `
+            <div class="text-center"><p class="text-[10px] font-black text-green-600">${stats.P}</p><p class="text-[7px] text-slate-400 font-bold">P</p></div>
+            <div class="text-center"><p class="text-[10px] font-black text-red-600">${stats.F}</p><p class="text-[7px] text-slate-400 font-bold">F</p></div>
+            <div class="text-center"><p class="text-[10px] font-black text-amber-600">${stats.J}</p><p class="text-[7px] text-slate-400 font-bold">J</p></div>
+        `;
+        this.openModal('chartsModal');
+    },
+
+    openReports() {
+        const cls = this.getActiveClass();
+        const container = document.getElementById('reports-grid-container');
+        
+        const stats = cls.students.map(s => {
+            let p = 0, f = 0, j = 0;
+            Object.values(cls.history).forEach(day => {
+                if(day[s.id] === 'P') p++;
+                else if(day[s.id] === 'F') f++;
+                else if(day[s.id] === 'J') j++;
+            });
+            const total = p + f + j;
+            const perc = total > 0 ? ((p / total) * 100).toFixed(1) : "0.0";
+            return { name: s.name, p, f, perc };
+        }).sort((a,b) => a.name.localeCompare(b.name));
+
+        container.innerHTML = `
+            <table class="w-full text-[9px] border-collapse">
+                <thead class="bg-indigo-green text-egg-yolk font-black uppercase sticky top-0 z-10">
+                    <tr><th class="p-3 text-left">ALUNO</th><th class="p-3">P</th><th class="p-3">F</th><th class="p-3 text-right">FREQ. %</th></tr>
+                </thead>
+                <tbody class="divide-y dark:divide-white/10">
+                    ${stats.map(s => `
+                        <tr class="hover:bg-egg-yolk/5 transition-all">
+                            <td class="p-3 font-black uppercase text-left">${s.name}</td>
+                            <td class="p-3 text-center font-bold text-green-600">${s.p}</td>
+                            <td class="p-3 text-center font-bold text-red-600">${s.f}</td>
+                            <td class="p-3 text-right"><span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-black/20 font-black">${s.perc}%</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        this.openModal('reportsModal');
+    },
+
+    exportBackup() {
+        const blob = new Blob([JSON.stringify(this.data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_v53_platinum_${Date.now()}.json`;
+        a.click();
+    },
+
+    importBackup(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.classes) { this.data = data; this.save(); location.reload(); }
+                } catch(err) { this.showToast("ERRO", "error"); }
+            };
+            reader.readAsText(file);
+        }
+    },
+
+    exportPDF() {
+        const cls = this.getActiveClass();
+        const dateRaw = document.getElementById('attendanceDate').value;
+        const [y, m, d] = dateRaw.split('-');
+        this.showToast("A GERAR PDF A4...");
+
+        const pdfContainer = document.createElement('div');
+        pdfContainer.className = 'pdf-template';
+        pdfContainer.innerHTML = `
+            <div style="width: 100%; border-bottom: 3px solid #0D5C63; padding-bottom: 20px; margin-bottom: 30px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                <h1 style="margin: 0; font-size: 26px; font-weight: 900; color: #0D5C63; text-transform: uppercase;">${cls.name}</h1>
+                <p style="margin: 5px 0 10px 0; font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 2px;">DIÁRIO DE CLASSE PRO - LISTA DE PRESENÇA</p>
+                <div style="background: #0D5C63; color: white; padding: 5px 25px; border-radius: 50px; font-size: 16px; font-weight: 800;">${d}/${m}/${y}</div>
+            </div>
+            <table>
+                <thead>
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="width: 50px;">Nº</th>
+                        <th style="text-align: left;">ESTUDANTE</th>
+                        <th style="width: 150px;">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${cls.students.sort((a,b) => a.number - b.number).map(s => {
+                        const st = (cls.history[dateRaw] || {})[s.id] || '-';
+                        let label = st === 'P' ? 'PRESENTE' : st === 'F' ? 'FALTA' : st === 'J' ? 'JUSTIFICADO' : '-';
+                        let color = st === 'P' ? '#16a34a' : st === 'F' ? '#dc2626' : st === 'J' ? '#d97706' : '#94a3b8';
+                        return `<tr><td>${s.number}</td><td style="text-align: left; font-weight: bold;">${s.name}</td><td style="color: ${color}; font-weight: 900;">${label}</td></tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top: 50px; width: 100%; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
+                <span>Emitido em: ${new Date().toLocaleString()}</span>
+                <div style="text-align: center;">
+                    <div style="width: 250px; border-top: 1px solid #0D5C63; margin-top: 10px; padding-top: 5px; color: #0D5C63; font-weight: bold; text-transform: uppercase;">Assinatura do Responsável</div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(pdfContainer);
+        const opt = { margin: 10, filename: `DIARIO_${cls.name}_${dateRaw}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        html2pdf().set(opt).from(pdfContainer).save().then(() => {
+            document.body.removeChild(pdfContainer);
+            this.showToast("PDF GERADO COM SUCESSO");
+        });
+    },
+
+    toggleTheme() { this.data.theme = this.data.theme === 'light' ? 'dark' : 'light'; this.applyTheme(); this.save(); },
+
+    applyTheme() {
+        const isDark = this.data.theme === 'dark';
+        if (isDark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+        const btn = document.getElementById('theme-toggle-btn');
+        if(btn) btn.innerHTML = isDark ? `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>` : `<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>`;
+    },
+
+    showToast(m, type = 'success') {
+        const t = document.getElementById('toast');
+        if(!t) return;
+        t.textContent = m; t.className = `toast show fixed bottom-8 left-1/2 glass ${type === 'error' ? 'bg-red-900 text-white' : 'bg-indigo-green text-egg-yolk'} py-2 px-6 rounded-full shadow-2xl font-black text-[8px] uppercase text-center border border-egg-yolk/30 min-w-[180px]`;
+        setTimeout(() => t.classList.remove('show'), 2500);
+    },
+
+    openModal(id) {
+        document.getElementById(id).classList.add('active');
+        if(id === 'classesModal') this.renderClassList();
+        if(id === 'diaryModal') this.renderDiary();
+    },
+
+    closeModal() { document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('active')); },
+
+    logout() { sessionStorage.removeItem('pro_auth_ok'); location.reload(); }
+};
+
+window.App = App;
+window.onload = () => App.init();
+</script>
+</body>
+</html>
